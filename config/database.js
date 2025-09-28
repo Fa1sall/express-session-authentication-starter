@@ -7,7 +7,7 @@ dotenv.config();
  * -------------- DATABASE ----------------
  *
  * Example .env:
- * DB_STRING=postgresql://user:password@localhost:5432/mydb
+ * DB_STRING=postgresql://user:password@localhost:5432/myappdb
  */
 
 const { Pool } = pg;

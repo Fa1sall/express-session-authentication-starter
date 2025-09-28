@@ -1,6 +1,7 @@
 import { Router } from "express";
 import passport from "passport";
-import * as passwordUtils from "../lib/passwordUtils.js";
+import { genPassword } from "../lib/passwordUtils.js";
+import { isAuth, isAdmin } from "./authMiddleware.js";
 import pool from "../config/database.js";
 
 const router = Router();
@@ -10,10 +11,27 @@ const router = Router();
  */
 
 // TODO
-router.post("/login", (req, res, next) => {});
+router.post(
+  "/login",
+  passport.authenticate("local", {
+    successRedirect: "/login-success",
+    failureRedirect: "/login-failure",
+  })
+);
 
 // TODO
-router.post("/register", (req, res, next) => {});
+router.post("/register", async (req, res, next) => {
+  try {
+    const hashedPassword = await genPassword(req.body.password);
+    await pool.query(
+      "INSERT INTO users (username,password,admin) values ($1,$2,$3)",
+      [req.body.username, hashedPassword, true]
+    );
+    res.redirect("/login");
+  } catch (error) {
+    next(error);
+  }
+});
 
 /**
  * -------------- GET ROUTES ----------------
@@ -51,22 +69,21 @@ router.get("/register", (req, res, next) => {
  *
  * Also, look up what behaviour express session has without a maxage set
  */
-router.get("/protected-route", (req, res, next) => {
-  if (req.isAuthenticated()) {
-    res.send(
-      '<h1>You are authenticated</h1><p><a href="/logout">Logout and reload</a></p>'
-    );
-  } else {
-    res.send(
-      '<h1>You are not authenticated</h1><p><a href="/login">Login</a></p>'
-    );
-  }
+router.get("/protected-route", isAuth, (req, res, next) => {
+  res.send("You reached the protected route!");
+});
+
+router.get("/admin-route", isAdmin, (req, res, next) => {
+  res.send("You reached the admin route");
 });
 
 // Visiting this route logs the user out
 router.get("/logout", (req, res, next) => {
-  req.logout(() => {
-    res.redirect("/protected-route");
+  req.logout((err) => {
+    if (err) {
+      return next(err);
+    }
+    res.redirect("/login");
   });
 });
 
